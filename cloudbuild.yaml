@@ -31,7 +31,7 @@ substitutions:
   _REPO: linebot
   _SERVICE: linebot-gemini-file-search
   _GCS_BUCKET: linebot-multimodal-rag
-  _GEMINI_MODEL: gemini-3.1-flash
+  _GEMINI_MODEL: gemini-3-flash-preview
 
 images:
   - '${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/${_SERVICE}:${SHORT_SHA}'

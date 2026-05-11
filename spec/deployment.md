@@ -138,7 +138,7 @@ Register this URL in LINE Developers Console:
 | `LINE_CHANNEL_ACCESS_TOKEN` | Secret Manager | For sending messages |
 | `GEMINI_API_KEY` | Secret Manager | For Gemini API access |
 | `GCS_BUCKET` | Cloud Build substitution | GCS bucket name |
-| `GEMINI_MODEL` | Cloud Build substitution | Default: `gemini-3.1-flash` |
+| `GEMINI_MODEL` | Cloud Build substitution | Default: `gemini-3-flash-preview` |
 
 ---
 

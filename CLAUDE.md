@@ -48,7 +48,7 @@ production multi-instance scaling, swap to Firestore. The session only holds
 - `line-bot-sdk` v3 (async API: `AsyncMessagingApi`, `AsyncMessagingApiBlob`)
 - `google-genai` SDK (the NEW one, not `google-generativeai`)
 - `google-cloud-storage`
-- Default Gemini model: **`gemini-3.1-flash`** (env var `GEMINI_MODEL`)
+- Default Gemini model: **`gemini-3-flash-preview`** (env var `GEMINI_MODEL`)
 - Embedding model: `models/gemini-embedding-2` (multimodal)
 
 ## Key API call shapes (so you don't have to rediscover)

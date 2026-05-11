@@ -12,7 +12,7 @@ from google.cloud import storage as gcs
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "")
-GEN_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash")
+GEN_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3-flash-preview")
 
 STORE_NAME_BLOB = "config/file_search_store_name.txt"
 SYSTEM_PROMPT = (

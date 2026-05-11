@@ -59,7 +59,7 @@ FastAPI (Cloud Run)
 **核心元件：**
 - **Gemini File Search API** — 托管式多模態 RAG（Google 處理 chunking、embedding、indexing）
 - **Embedding model**：`gemini-embedding-2`（文字 + 圖片同一向量空間）
-- **Generation model**：`gemini-3.1-flash`（可透過環境變數 `GEMINI_MODEL` 調整）
+- **Generation model**：`gemini-3-flash-preview`（可透過環境變數 `GEMINI_MODEL` 調整）
 - **GCS**：上傳檔案的持久化儲存 + File Search Store 名稱記錄
 - **FastAPI BackgroundTasks**：避免建索引時佔住 LINE reply token（30 秒限制）
 
@@ -97,7 +97,7 @@ LINE_CHANNEL_SECRET=你的_line_channel_secret
 LINE_CHANNEL_ACCESS_TOKEN=你的_line_channel_access_token
 GEMINI_API_KEY=你的_gemini_api_key
 GCS_BUCKET=你的_gcs_bucket_名稱
-GEMINI_MODEL=gemini-3.1-flash
+GEMINI_MODEL=gemini-3-flash-preview
 ```
 
 | 變數 | 哪裡取得 |
