@@ -90,23 +90,58 @@ Fallback: If primary fails, use Gemini Vision to describe image → text query.
 ## Data Flow: Text Query
 
 ```
-1. User sends text
+1. User sends text (LINE event has source.user_id = "U...")
 2. LINE → POST /webhook (TextMessageContent)
 3. client.aio.models.generate_content(
        model=GEN_MODEL,
        contents=text,
        config=GenerateContentConfig(
-           tools=[Tool(file_search=FileSearch(file_search_store_names=[store]))]
+           tools=[Tool(file_search=FileSearch(
+               file_search_store_names=[store],
+               metadata_filter=f'user_id="{user_id}"'   # ← user isolation
+           ))]
        )
    )
-4. Gemini embeds query, searches store, retrieves chunks, generates answer
+4. Gemini embeds query, searches ONLY this user's documents, generates answer
 5. Reply with answer
 ```
+
+## User Isolation
+
+All users share **one File Search Store**, isolated via `custom_metadata`:
+
+### At upload time
+```python
+client.file_search_stores.upload_to_file_search_store(
+    file_search_store_name=store,
+    file=path,
+    config={
+        "display_name": filename,
+        "custom_metadata": [
+            {"key": "user_id", "string_value": "U1234567890abcdef..."}
+        ],
+    },
+)
+```
+
+### At query time
+```python
+file_search=types.FileSearch(
+    file_search_store_names=[store],
+    metadata_filter='user_id="U1234567890abcdef..."',  # google.aip.dev/160 filter syntax
+)
+```
+
+The filter is applied server-side by Gemini — users **cannot** see or query each other's documents regardless of how they phrase the query.
+
+**Note**: `/store/info` endpoint shows global store state (all documents). Protect it
+in production (e.g., IAM auth or admin token).
 
 ## Scaling Notes
 
 | Component | Current (PoC) | Production Recommendation |
 |-----------|--------------|--------------------------|
 | Session store | In-memory (min-instances=1) | Cloud Firestore |
-| File Search Store | Single shared store | Per-tenant stores with metadata filtering |
+| File Search Store | Single shared store + metadata_filter | Still single store; scale via metadata |
 | Cloud Run instances | min=1 (session) | Firestore allows min=0 |
+| `/store/info` endpoint | Open (PoC only) | Protect with IAM or admin token |

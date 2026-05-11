@@ -111,8 +111,8 @@ async def _bg_store_and_notify(
 ) -> None:
     try:
         file_bytes = await _load_from_gcs(gcs_path)
-        await gemini.upload_and_index(file_bytes, mime_type, display_name)
-        await _push(user_id, f"✅ 已成功存入資料庫！\n📄 {display_name}")
+        await gemini.upload_and_index(file_bytes, mime_type, display_name, user_id)
+        await _push(user_id, f"✅ 已成功存入您的資料庫！\n📄 {display_name}")
     except Exception as e:
         print(f"[BG Store] Error: {e}")
         await _push(user_id, f"❌ 存入失敗：{str(e)[:120]}")
@@ -125,8 +125,10 @@ async def handle_text_message(event: MessageEvent) -> None:
     if not text:
         return
 
+    user_id = event.source.user_id
+
     try:
-        answer = await gemini.query_with_text(text)
+        answer = await gemini.query_with_text(text, user_id)
     except Exception as e:
         answer = f"❌ 查詢失敗：{str(e)[:120]}"
 
@@ -232,11 +234,12 @@ async def handle_postback(
             file_bytes = await _load_from_gcs(gcs_path)
 
             if content_type == "image":
-                answer = await gemini.query_with_image(file_bytes, mime_type)
+                answer = await gemini.query_with_image(file_bytes, mime_type, user_id)
             else:
                 # Non-image file: query by filename as hint
                 answer = await gemini.query_with_text(
-                    f"請從資料庫中找到與《{display_name}》相關的資訊並說明。"
+                    f"請從資料庫中找到與《{display_name}》相關的資訊並說明。",
+                    user_id,
                 )
 
             await _reply(event.reply_token, answer)

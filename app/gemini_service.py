@@ -12,7 +12,7 @@ from google.cloud import storage as gcs
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "")
-GEN_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+GEN_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.1-flash")
 
 STORE_NAME_BLOB = "config/file_search_store_name.txt"
 SYSTEM_PROMPT = (
@@ -89,9 +89,12 @@ def _upload_and_index_sync(
     file_bytes: bytes,
     mime_type: str,
     display_name: str,
-    custom_metadata: Optional[list[dict]] = None,
+    user_id: str,
+    extra_metadata: Optional[list[dict]] = None,
 ) -> None:
-    """Blocking: upload file to File Search Store and poll until indexed."""
+    """Blocking: upload file to File Search Store and poll until indexed.
+    user_id is stored as custom_metadata to enable per-user filtering at query time.
+    """
     client = get_client()
     store_name = get_or_create_store()
 
@@ -101,14 +104,17 @@ def _upload_and_index_sync(
         tmp_path = tmp.name
 
     try:
-        config: dict = {"display_name": display_name}
-        if custom_metadata:
-            config["custom_metadata"] = custom_metadata
+        metadata: list[dict] = [{"key": "user_id", "string_value": user_id}]
+        if extra_metadata:
+            metadata.extend(extra_metadata)
 
         operation = client.file_search_stores.upload_to_file_search_store(
             file_search_store_name=store_name,
             file=tmp_path,
-            config=config,
+            config={
+                "display_name": display_name,
+                "custom_metadata": metadata,
+            },
         )
 
         # Poll until done (max 5 minutes)
@@ -128,7 +134,8 @@ async def upload_and_index(
     file_bytes: bytes,
     mime_type: str,
     display_name: str,
-    custom_metadata: Optional[list[dict]] = None,
+    user_id: str,
+    extra_metadata: Optional[list[dict]] = None,
 ) -> None:
     """Async wrapper for upload_and_index_sync."""
     loop = asyncio.get_event_loop()
@@ -138,14 +145,21 @@ async def upload_and_index(
         file_bytes,
         mime_type,
         display_name,
-        custom_metadata,
+        user_id,
+        extra_metadata,
     )
 
 
 # --- Query ---
 
-async def query_with_text(text: str) -> str:
-    """RAG query using text input."""
+def _user_filter(user_id: str) -> str:
+    """Metadata filter expression — restricts results to documents owned by user_id."""
+    # LINE user IDs are 'U' + 32 hex chars, safe in google.aip.dev/160 filter syntax
+    return f'user_id="{user_id}"'
+
+
+async def query_with_text(text: str, user_id: str) -> str:
+    """RAG query using text input, restricted to caller's documents."""
     store_name = get_or_create_store()
 
     response = await get_client().aio.models.generate_content(
@@ -156,7 +170,8 @@ async def query_with_text(text: str) -> str:
             tools=[
                 types.Tool(
                     file_search=types.FileSearch(
-                        file_search_store_names=[store_name]
+                        file_search_store_names=[store_name],
+                        metadata_filter=_user_filter(user_id),
                     )
                 )
             ],
@@ -165,9 +180,13 @@ async def query_with_text(text: str) -> str:
     return response.text
 
 
-async def query_with_image(image_bytes: bytes, mime_type: str) -> str:
-    """RAG query using an image as input — model sees the image and searches the store."""
+async def query_with_image(image_bytes: bytes, mime_type: str, user_id: str) -> str:
+    """RAG query using image input, restricted to caller's documents.
+    Primary: pass image directly with file_search tool.
+    Fallback: describe image with vision, then text search.
+    """
     store_name = get_or_create_store()
+    filter_expr = _user_filter(user_id)
 
     try:
         response = await get_client().aio.models.generate_content(
@@ -189,7 +208,8 @@ async def query_with_image(image_bytes: bytes, mime_type: str) -> str:
                 tools=[
                     types.Tool(
                         file_search=types.FileSearch(
-                            file_search_store_names=[store_name]
+                            file_search_store_names=[store_name],
+                            metadata_filter=filter_expr,
                         )
                     )
                 ],
@@ -213,5 +233,6 @@ async def query_with_image(image_bytes: bytes, mime_type: str) -> str:
         )
         description = desc_response.text
         return await query_with_text(
-            f"根據以下圖片描述，請從資料庫中找到相關資訊：\n\n{description}"
+            f"根據以下圖片描述，請從資料庫中找到相關資訊：\n\n{description}",
+            user_id,
         )
