@@ -25,6 +25,19 @@ _client: Optional[genai.Client] = None
 _store_name: str = ""
 _executor = ThreadPoolExecutor(max_workers=4)
 
+# Fallback when display_name has no extension. Avoids mimetypes.guess_extension()
+# returning oddities like '.jpe' for 'image/jpeg' on Python <3.13.
+_MIME_TO_EXT = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "application/pdf": ".pdf",
+    "text/plain": ".txt",
+    "text/markdown": ".md",
+    "text/csv": ".csv",
+}
+
 
 def get_client() -> genai.Client:
     global _client
@@ -98,7 +111,17 @@ def _upload_and_index_sync(
     client = get_client()
     store_name = get_or_create_store()
 
-    suffix = mimetypes.guess_extension(mime_type) or ".bin"
+    # Prefer the extension from display_name. mimetypes.guess_extension() on
+    # Python <3.13 returns '.jpe' for 'image/jpeg', which the File Search API
+    # rejects with "Upload has already been terminated".
+    if "." in display_name:
+        suffix = "." + display_name.rsplit(".", 1)[-1].lower()
+    else:
+        suffix = _MIME_TO_EXT.get(mime_type) or mimetypes.guess_extension(mime_type) or ".bin"
+
+    print(f"[BG Store] uploading display_name={display_name!r} mime={mime_type} "
+          f"size={len(file_bytes)} tmp_suffix={suffix}")
+
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(file_bytes)
         tmp_path = tmp.name

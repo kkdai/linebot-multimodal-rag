@@ -1,5 +1,6 @@
 import os
 import mimetypes
+import traceback
 from typing import Optional
 
 from fastapi import BackgroundTasks
@@ -114,7 +115,7 @@ async def _bg_store_and_notify(
         await gemini.upload_and_index(file_bytes, mime_type, display_name, user_id)
         await _push(user_id, f"✅ 已成功存入您的資料庫！\n📄 {display_name}")
     except Exception as e:
-        print(f"[BG Store] Error: {e}")
+        print(f"[BG Store] Error: {e}\n{traceback.format_exc()}")
         await _push(user_id, f"❌ 存入失敗：{str(e)[:120]}")
 
 
