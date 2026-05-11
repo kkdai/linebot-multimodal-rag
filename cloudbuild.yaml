@@ -29,8 +29,8 @@ steps:
 substitutions:
   _REGION: asia-east1
   _REPO: linebot
-  _SERVICE: linebot-multimodal-rag
-  _GCS_BUCKET: linebot-rag-store
+  _SERVICE: linebot-gemini-file-search
+  _GCS_BUCKET: linebot-multimodal-rag
   _GEMINI_MODEL: gemini-3.1-flash
 
 images:
